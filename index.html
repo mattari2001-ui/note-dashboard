@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>note記事 パフォーマンスダッシュボード</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#ffffff;
+    --ink:#1d1d1f;
+    --sub:#6e6e73;
+    --line:#e5e5ea;
+    --accent:#0071e3;
+    --accent-soft:#eaf3fd;
+    --good:#1e8e5a;
+    --good-soft:#e9f7f0;
+    --warn:#c0392b;
+    --warn-soft:#fdeceb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Hiragino Sans","Yu Gothic",sans-serif;
+    padding:40px 20px 80px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:.08em;
+    color:var(--sub);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:30px;
+    font-weight:600;
+    letter-spacing:-0.015em;
+    margin:0 0 6px;
+  }
+  .lede{color:var(--sub); font-size:14px; margin:0 0 8px; line-height:1.6;}
+  .updated{color:var(--sub); font-size:12px; margin:0 0 36px;}
+
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:14px;
+    margin-bottom:40px;
+  }
+  .kpi{
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:20px 18px;
+  }
+  .kpi .label{font-size:12px; color:var(--sub); margin-bottom:10px;}
+  .kpi .value{font-size:26px; font-weight:600; letter-spacing:-0.01em; font-variant-numeric:tabular-nums;}
+  .kpi .value.accent{color:var(--accent);}
+  .kpi .value.good{color:var(--good);}
+  .kpi .sub{font-size:11px; color:var(--sub); margin-top:4px;}
+
+  section{margin-bottom:44px;}
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:16px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:10px;
+  }
+  .section-title{font-size:16px; font-weight:600; letter-spacing:-0.005em;}
+  .section-note{font-size:12px; color:var(--sub);}
+
+  .bars{display:flex; flex-direction:column; gap:10px;}
+  .bar-row{display:grid; grid-template-columns:220px 1fr 56px; align-items:center; gap:12px;}
+  .bar-label{
+    font-size:13px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .bar-track{background:#f5f5f7; border-radius:6px; height:14px; overflow:hidden;}
+  .bar-fill{background:var(--accent); height:100%; border-radius:6px;}
+  .bar-num{font-size:13px; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th, td{text-align:left; padding:10px 8px; border-bottom:1px solid var(--line);}
+  th{
+    color:var(--sub);
+    font-weight:600;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    cursor:pointer;
+    user-select:none;
+  }
+  th.num, td.num{text-align:right; font-variant-numeric:tabular-nums;}
+  td.title-cell{max-width:340px;}
+  tr:hover td{background:#fafafa;}
+  .rate-pill{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+  }
+  .rate-high{background:var(--good-soft); color:var(--good);}
+  .rate-mid{background:var(--accent-soft); color:var(--accent);}
+  .rate-low{background:#f5f5f7; color:var(--sub);}
+
+  .insight-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .insight-card{
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:20px;
+  }
+  .insight-card .tag{
+    font-size:11px;
+    color:var(--accent);
+    font-weight:600;
+    letter-spacing:.03em;
+    margin-bottom:8px;
+  }
+  .insight-card p{margin:0; font-size:13px; line-height:1.8; color:var(--ink);}
+  .insight-card .stat{
+    font-size:22px;
+    font-weight:600;
+    margin:2px 0 8px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .actions{display:flex; flex-direction:column; gap:12px;}
+  .action{
+    display:grid;
+    grid-template-columns:32px 1fr;
+    gap:14px;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px 20px;
+  }
+  .action .num{
+    font-size:14px;
+    font-weight:600;
+    color:var(--accent);
+    padding-top:1px;
+  }
+  .action .body h3{
+    margin:0 0 6px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .action .body p{margin:0; font-size:13px; color:var(--sub); line-height:1.7;}
+
+  .briefing-card{
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:22px 24px;
+    margin-bottom:14px;
+  }
+  .briefing-period{font-size:12px; color:var(--sub); margin-bottom:6px;}
+  .briefing-title{font-size:16px; font-weight:600; margin:0 0 12px; letter-spacing:-0.005em;}
+  .briefing-summary{font-size:13px; line-height:1.8; color:var(--ink); margin:0 0 6px; white-space:pre-wrap;}
+  .news-items{display:flex; flex-direction:column; gap:12px; margin-top:14px;}
+  .news-item{border-top:1px solid var(--line); padding-top:12px;}
+  .news-item .headline{font-size:13px; font-weight:600; margin-bottom:4px;}
+  .news-item .summary{font-size:12px; color:var(--sub); line-height:1.7; margin-bottom:4px; white-space:pre-wrap;}
+  .news-item a{font-size:11px; color:var(--accent); text-decoration:none;}
+  .deepdive-toggle{
+    font-size:12px;
+    color:var(--accent);
+    cursor:pointer;
+    margin-top:10px;
+    display:inline-block;
+  }
+  .deepdive-body{display:none; font-size:13px; line-height:1.85; color:var(--ink); margin-top:12px; white-space:pre-wrap;}
+  .deepdive-body.open{display:block;}
+  .history-list{font-size:12px; color:var(--sub); line-height:2;}
+  .loading, .empty{color:var(--sub); font-size:13px; padding:20px 0;}
+
+  @media (max-width:720px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .insight-grid{grid-template-columns:1fr;}
+    .bar-row{grid-template-columns:120px 1fr 44px;}
+  }
+  @media (min-width:721px) and (max-width:900px){
+    .kpi-row{grid-template-columns:repeat(3,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Apple思考 / note記事分析</div>
+  <h1>パフォーマンスダッシュボード</h1>
+  <p class="lede">note記事44本のビュー・スキ・コメントをまとめて確認できます。</p>
+  <p class="updated" id="updatedAt">読み込み中...</p>
+
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi"><div class="label">記事数</div><div class="value">-</div></div>
+    <div class="kpi"><div class="label">総ビュー</div><div class="value">-</div></div>
+    <div class="kpi"><div class="label">総スキ</div><div class="value">-</div></div>
+    <div class="kpi"><div class="label">平均エンゲージメント率</div><div class="value">-</div></div>
+    <div class="kpi"><div class="label">今週の合計増分</div><div class="value">-</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">週次の合計ビュー推移</div>
+      <div class="section-note">記録日ごとの合計</div>
+    </div>
+    <div class="bars" id="weeklyBars"><div class="loading">読み込み中...</div></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">ビュー数 上位10記事</div>
+      <div class="section-note">全期間累計</div>
+    </div>
+    <div class="bars" id="topBars"><div class="loading">読み込み中...</div></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">1日あたりビュー 上位10記事</div>
+      <div class="section-note">公開日数で補正、同条件で比較</div>
+    </div>
+    <div class="bars" id="perDayBars"><div class="loading">読み込み中...</div></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">Apple週次速報</div>
+      <div class="section-note">Coworkで作成・毎週更新</div>
+    </div>
+    <div id="briefingWrap"><div class="loading">読み込み中...</div></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">分析</div>
+      <div class="section-note">データから自動算出</div>
+    </div>
+    <div class="insight-grid" id="insightGrid">
+      <div class="insight-card"><p class="loading">読み込み中...</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">今後のアクション</div>
+      <div class="section-note">開校まで半年を見据えた優先順位</div>
+    </div>
+    <div class="actions" id="actionsList"><div class="loading">読み込み中...</div></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">記事一覧</div>
+      <div class="section-note">列見出しをクリックで並び替え</div>
+    </div>
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th data-key="title">記事</th>
+          <th data-key="published_at">公開日</th>
+          <th class="num" data-key="pv">ビュー</th>
+          <th class="num" data-key="like">スキ</th>
+          <th class="num" data-key="comment">コメント</th>
+          <th class="num" data-key="perDay">PV/日</th>
+          <th class="num" data-key="weeklyDelta">今週の増分</th>
+          <th class="num" data-key="rate">エンゲージ率</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="8" class="loading">読み込み中...</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<script>
+const SUPABASE_URL = "https://cjxsezbqcemzeoycldwr.supabase.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqeHNlemJxY2VtemVveWNsZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMTM2NzksImV4cCI6MjA5ODY4OTY3OX0.SbUI99jH1wmQJWU-0sukt9itJbl0_h5dkmaulpZQN1k";
+const ARTICLES_TABLE = encodeURIComponent("note記事");
+const STATS_TABLE = "note_article_stats";
+
+const headers = {
+  "apikey": ANON_KEY,
+  "Authorization": "Bearer " + ANON_KEY
+};
+
+let rows = [];
+let sortKey = "pv";
+let sortDir = "desc";
+
+function fmt(n){ return n === null || n === undefined ? "-" : n.toLocaleString("ja-JP"); }
+function pct(n){ return (n*100).toFixed(1) + "%"; }
+
+function rateClass(r){
+  if(r >= 0.15) return "rate-high";
+  if(r >= 0.06) return "rate-mid";
+  return "rate-low";
+}
+
+async function loadData(){
+  try{
+    const [articlesRes, statsRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/${ARTICLES_TABLE}?select=id,title,published_at,like_count,comment_count`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/note_article_stats?select=article_id,recorded_at,pv_count&order=recorded_at.desc`, { headers })
+    ]);
+    if(!articlesRes.ok || !statsRes.ok) throw new Error("データの取得に失敗しました");
+    const articles = await articlesRes.json();
+    const stats = await statsRes.json();
+
+    const statsByArticle = {};
+    for(const s of stats){
+      if(!statsByArticle[s.article_id]) statsByArticle[s.article_id] = [];
+      statsByArticle[s.article_id].push(s);
+    }
+    const totalsByDate = {};
+    for(const s of stats){
+      totalsByDate[s.recorded_at] = (totalsByDate[s.recorded_at] || 0) + (s.pv_count || 0);
+    }
+    window.__weeklyTotals = Object.entries(totalsByDate).sort((a,b)=> a[0].localeCompare(b[0]));
+
+    rows = articles.map(a => {
+      const entries = statsByArticle[a.id] || [];
+      const pv = entries.length ? entries[0].pv_count : null;
+      const prevPv = entries.length > 1 ? entries[1].pv_count : null;
+      const weeklyDelta = (pv !== null && prevPv !== null) ? pv - prevPv : null;
+      const like = a.like_count ?? 0;
+      const comment = a.comment_count ?? 0;
+      const rate = pv && pv > 0 ? (like + comment) / pv : null;
+      const days = a.published_at ? Math.max(1, Math.floor((Date.now() - new Date(a.published_at).getTime()) / 86400000)) : null;
+      const perDay = (pv !== null && days) ? pv / days : null;
+      return {
+        id: a.id,
+        title: a.title,
+        published_at: a.published_at,
+        pv, like, comment, rate, days, perDay, weeklyDelta
+      };
+    }).filter(r => r.pv !== null);
+
+    document.getElementById("updatedAt").textContent =
+      "最終更新: " + new Date().toLocaleString("ja-JP", { year:"numeric", month:"long", day:"numeric", hour:"2-digit", minute:"2-digit" });
+
+    renderKpis();
+    renderWeeklyBars();
+    renderBars();
+    renderPerDayBars();
+    renderInsightsAndActions();
+    renderTable();
+  }catch(e){
+    document.getElementById("updatedAt").textContent = String(e.message || e);
+  }
+}
+
+function renderKpis(){
+  const totalArticles = rows.length;
+  const totalViews = rows.reduce((s,r)=>s+(r.pv||0),0);
+  const totalLikes = rows.reduce((s,r)=>s+(r.like||0),0);
+  const totalComments = rows.reduce((s,r)=>s+(r.comment||0),0);
+  const avgRate = totalViews > 0 ? (totalLikes+totalComments)/totalViews : 0;
+  const deltas = rows.filter(r => r.weeklyDelta !== null).map(r=>r.weeklyDelta);
+  const totalDelta = deltas.length ? deltas.reduce((s,d)=>s+d,0) : null;
+
+  const kpiRow = document.getElementById("kpiRow");
+  kpiRow.innerHTML = `
+    <div class="kpi"><div class="label">記事数</div><div class="value">${fmt(totalArticles)}</div></div>
+    <div class="kpi"><div class="label">総ビュー</div><div class="value accent">${fmt(totalViews)}</div></div>
+    <div class="kpi"><div class="label">総スキ + コメント</div><div class="value">${fmt(totalLikes+totalComments)}</div><div class="sub">スキ${fmt(totalLikes)} / コメント${fmt(totalComments)}</div></div>
+    <div class="kpi"><div class="label">平均エンゲージメント率</div><div class="value good">${pct(avgRate)}</div><div class="sub">(スキ+コメント) ÷ ビュー</div></div>
+    <div class="kpi"><div class="label">今週の合計増分</div><div class="value ${totalDelta!==null && totalDelta>=0 ? 'good' : ''}">${totalDelta!==null ? (totalDelta>=0?"+":"")+fmt(totalDelta) : "-"}</div><div class="sub">${totalDelta!==null ? "前回記録との差" : "来週以降に表示"}</div></div>
+  `;
+}
+
+function renderWeeklyBars(){
+  const weekly = window.__weeklyTotals || [];
+  const wrap = document.getElementById("weeklyBars");
+  if(weekly.length === 0){
+    wrap.innerHTML = '<div class="empty">まだ記録がありません</div>';
+    return;
+  }
+  if(weekly.length === 1){
+    wrap.innerHTML = `<div class="empty">現在は${weekly[0][0]}の1回分のみです。来週以降のデータが加わると推移が表示されます。</div>`;
+    return;
+  }
+  const max = Math.max(...weekly.map(w=>w[1]));
+  wrap.innerHTML = weekly.map(([date, total]) => `
+    <div class="bar-row">
+      <div class="bar-label">${date}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,(total/max)*100)}%"></div></div>
+      <div class="bar-num">${fmt(total)}</div>
+    </div>
+  `).join("");
+}
+
+function renderBars(){
+  const top = [...rows].sort((a,b)=>(b.pv||0)-(a.pv||0)).slice(0,10);
+  const max = top.length ? top[0].pv : 1;
+  const wrap = document.getElementById("topBars");
+  if(top.length === 0){ wrap.innerHTML = '<div class="empty">データがありません</div>'; return; }
+  wrap.innerHTML = top.map(r => `
+    <div class="bar-row">
+      <div class="bar-label" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,(r.pv/max)*100)}%"></div></div>
+      <div class="bar-num">${fmt(r.pv)}</div>
+    </div>
+  `).join("");
+}
+
+function renderPerDayBars(){
+  const eligible = rows.filter(r => r.perDay !== null && r.days >= 2);
+  const top = [...eligible].sort((a,b)=>(b.perDay||0)-(a.perDay||0)).slice(0,10);
+  const max = top.length ? top[0].perDay : 1;
+  const wrap = document.getElementById("perDayBars");
+  if(top.length === 0){ wrap.innerHTML = '<div class="empty">公開後2日以上のデータがありません</div>'; return; }
+  wrap.innerHTML = top.map(r => `
+    <div class="bar-row">
+      <div class="bar-label" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,(r.perDay/max)*100)}%"></div></div>
+      <div class="bar-num">${r.perDay.toFixed(1)}</div>
+    </div>
+  `).join("");
+}
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function renderInsightsAndActions(){
+  const withRate = rows.filter(r => r.pv >= 10 && r.rate !== null);
+  const byRateDesc = [...withRate].sort((a,b)=>b.rate-a.rate);
+  const topEngaged = byRateDesc.slice(0,3);
+
+  const perDayRows = rows.filter(r => r.perDay !== null && r.days >= 2);
+  const questionTitles = perDayRows.filter(r => r.title.includes("なぜ") || r.title.includes("？"));
+  const otherTitles = perDayRows.filter(r => !(r.title.includes("なぜ") || r.title.includes("？")));
+  const avgPerDay = arr => arr.length ? arr.reduce((s,r)=>s+(r.perDay||0),0)/arr.length : 0;
+  const avgQuestion = avgPerDay(questionTitles);
+  const avgOther = avgPerDay(otherTitles);
+
+  const sortedByDate = [...perDayRows].filter(r=>r.published_at).sort((a,b)=> new Date(b.published_at)-new Date(a.published_at));
+  const recent10 = sortedByDate.slice(0,10);
+  const older10 = sortedByDate.slice(10,20);
+  const avgRecent = avgPerDay(recent10);
+  const avgOlder = avgPerDay(older10);
+  const trendUp = avgRecent >= avgOlder;
+
+  const lowEngagement = rows.filter(r => r.pv >= 20 && r.rate !== null && r.rate < 0.05).sort((a,b)=>b.pv-a.pv);
+
+  const insightGrid = document.getElementById("insightGrid");
+  insightGrid.innerHTML = `
+    <div class="insight-card">
+      <div class="tag">比較方法について</div>
+      <p>累計ビューは公開からの経過日数が長いほど増えるため、記事同士をそのまま比べると不公平です。以下は「1日あたりビュー(累計ビュー÷経過日数)」で揃えた、公開日数に左右されない比較です。公開2日未満の記事は変動が大きいため対象外にしています。</p>
+    </div>
+    <div class="insight-card">
+      <div class="tag">タイトル傾向（1日あたり）</div>
+      <div class="stat">${avgQuestion.toFixed(2)} <span style="font-size:13px;color:var(--sub);font-weight:400;">vs ${avgOther.toFixed(2)}</span></div>
+      <p>「なぜ」「？」を含む問いかけ型タイトルの1日あたり平均ビューは${avgQuestion.toFixed(2)}、それ以外は${avgOther.toFixed(2)}です。${avgQuestion >= avgOther ? "経過日数で揃えても問いかけ型の方が読まれています。" : "経過日数で揃えると問いかけ型の優位性は見られませんでした。"}</p>
+    </div>
+    <div class="insight-card">
+      <div class="tag">直近の勢い（1日あたり）</div>
+      <div class="stat">${trendUp ? "上昇" : "やや減速"}</div>
+      <p>直近10本の1日あたり平均ビューは${avgRecent.toFixed(2)}、その前の10本は${avgOlder.toFixed(2)}です。${trendUp ? "同条件で見ても直近の投稿の方が反応が良い傾向です。" : "同条件で見ると直近の投稿はやや反応が落ちています。切り口の見直しを検討してください。"}</p>
+    </div>
+    <div class="insight-card">
+      <div class="tag">高エンゲージメント記事</div>
+      <p>${topEngaged.map(r=>`「${escapeHtml(r.title)}」(${pct(r.rate)})`).join("、") || "十分なデータがありません"}<br>ビュー数は少なくても反応率が高く、テーマとして深掘りする価値があります。</p>
+    </div>
+    <div class="insight-card">
+      <div class="tag">伸びしろのある記事</div>
+      <p>${lowEngagement.length ? "「"+escapeHtml(lowEngagement[0].title)+"」はビュー"+fmt(lowEngagement[0].pv)+"に対しエンゲージメント率"+pct(lowEngagement[0].rate)+"と低めです。タイトルや導入文の見直し候補です。" : "ビューの割にエンゲージメントが低い記事は見当たりません。"}</p>
+    </div>
+  `;
+
+  const topPerDay = [...perDayRows].sort((a,b)=>(b.perDay||0)-(a.perDay||0))[0];
+  const actionsList = document.getElementById("actionsList");
+  const actions = [];
+  actions.push({
+    title: "記事の評価は累計ビューではなくPV/日で比較する",
+    body: (topPerDay ? `累計ビューは古い記事ほど有利になります。同条件で見ると「${escapeHtml(topPerDay.title)}」が最も反応が良い記事です。` : "記事が増えるほど累計ビューの比較は不公平になります。") + " 今後の振り返りは「1日あたりビュー」を基準にしてください。"
+  });
+  actions.push({
+    title: "高エンゲージメント記事のテーマを深掘りする",
+    body: (topEngaged[0] ? `「${topEngaged[0].title}」のような反応率の高いテーマを、開校準備中のApple流戦略マーケティングスクールのカリキュラムや無料コンテンツの核に据えることをおすすめします。` : "反応率の高い記事が増えてきたら、そのテーマをスクールのコンテンツに転用してください。")
+  });
+  actions.push({
+    title: avgQuestion >= avgOther ? "問いかけ型タイトルを継続する" : "タイトルの型を見直す",
+    body: avgQuestion >= avgOther
+      ? "「なぜAppleは〜」形式のタイトルは引き続きビューを集めやすい傾向です。週1本のペースでも、この型を軸に据えてください。"
+      : "問いかけ型タイトルの優位性が薄れています。プロフィール記事や過去の高反応記事の言い回しを再点検し、次回タイトルに反映してください。"
+  });
+  actions.push({
+    title: "半年後の開校に向けて記事をスクール導線に変換する",
+    body: "上位記事をベースにしたミニ講座やダウンロード資料を用意し、note記事の読者をスクールのプレ登録に誘導する導線を今のうちに設計してください。"
+  });
+  if(lowEngagement.length){
+    actions.push({
+      title: "反応の伸びていない記事をリライトする",
+      body: `「${escapeHtml(lowEngagement[0].title)}」はビュー数の割に反応が薄いため、タイトルと冒頭300文字を見直して再露出させる価値があります。`
+    });
+  }
+  actions.push({
+    title: "PVは週次で手入力を継続する",
+    body: "noteダッシュボードのスクリーンショットを共有いただければ、その都度このデータに反映します。"
+  });
+
+  actionsList.innerHTML = actions.map((a,i) => `
+    <div class="action">
+      <div class="num">${String(i+1).padStart(2,"0")}</div>
+      <div class="body">
+        <h3>${escapeHtml(a.title)}</h3>
+        <p>${a.body}</p>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderTable(){
+  const sorted = [...rows].sort((a,b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if(sortKey === "title"){ av = av||""; bv = bv||""; return sortDir==="asc" ? av.localeCompare(bv,"ja") : bv.localeCompare(av,"ja"); }
+    if(sortKey === "published_at"){ av = av? new Date(av).getTime():0; bv = bv? new Date(bv).getTime():0; }
+    else { av = av ?? -1; bv = bv ?? -1; }
+    return sortDir === "asc" ? av - bv : bv - av;
+  });
+  const tbody = document.getElementById("tableBody");
+  if(sorted.length === 0){ tbody.innerHTML = '<tr><td colspan="8" class="empty">データがありません</td></tr>'; return; }
+  tbody.innerHTML = sorted.map(r => `
+    <tr>
+      <td class="title-cell">${escapeHtml(r.title)}</td>
+      <td>${r.published_at ? r.published_at.slice(0,10) : "-"}</td>
+      <td class="num">${fmt(r.pv)}</td>
+      <td class="num">${fmt(r.like)}</td>
+      <td class="num">${fmt(r.comment)}</td>
+      <td class="num">${r.perDay !== null ? r.perDay.toFixed(1) : "-"}</td>
+      <td class="num">${r.weeklyDelta !== null ? (r.weeklyDelta >= 0 ? "+" : "") + fmt(r.weeklyDelta) : "-"}</td>
+      <td class="num">${r.rate !== null ? `<span class="rate-pill ${rateClass(r.rate)}">${pct(r.rate)}</span>` : "-"}</td>
+    </tr>
+  `).join("");
+}
+
+document.querySelectorAll('#dataTable th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if(sortKey === key){ sortDir = sortDir === "asc" ? "desc" : "asc"; }
+    else { sortKey = key; sortDir = "desc"; }
+    renderTable();
+  });
+});
+
+async function loadBriefing(){
+  const wrap = document.getElementById("briefingWrap");
+  try{
+    const digestRes = await fetch(`${SUPABASE_URL}/rest/v1/apple_weekly_digest?select=id,report_date,period_start,period_end,title,summary,deep_dive_topic,deep_dive_content&order=report_date.desc&limit=6`, { headers });
+    if(!digestRes.ok) throw new Error("週次速報の取得に失敗しました");
+    const digests = await digestRes.json();
+    if(digests.length === 0){
+      wrap.innerHTML = '<div class="empty">まだ週次速報がありません。</div>';
+      return;
+    }
+    const latest = digests[0];
+    const itemsRes = await fetch(`${SUPABASE_URL}/rest/v1/apple_weekly_news_items?select=headline,summary,source_name,source_url,item_order&digest_id=eq.${latest.id}&order=item_order.asc`, { headers });
+    const items = itemsRes.ok ? await itemsRes.json() : [];
+
+    const historyHtml = digests.slice(1).map(d =>
+      `<div>${d.period_start} 〜 ${d.period_end}　${escapeHtml(d.title)}</div>`
+    ).join("");
+
+    wrap.innerHTML = `
+      <div class="briefing-card">
+        <div class="briefing-period">${latest.period_start} 〜 ${latest.period_end}</div>
+        <div class="briefing-title">${escapeHtml(latest.title)}</div>
+        <div class="briefing-summary">${escapeHtml(latest.summary || "")}</div>
+        <div class="news-items">
+          ${items.map(it => `
+            <div class="news-item">
+              <div class="headline">${escapeHtml(it.headline)}</div>
+              <div class="summary">${escapeHtml(it.summary || "")}</div>
+              ${it.source_url ? `<a href="${it.source_url}" target="_blank" rel="noopener">${escapeHtml(it.source_name || "出典")}</a>` : ""}
+            </div>
+          `).join("")}
+        </div>
+        ${latest.deep_dive_topic ? `
+          <div class="deepdive-toggle" onclick="this.nextElementSibling.classList.toggle('open')">深掘りレポート：${escapeHtml(latest.deep_dive_topic)} ▼</div>
+          <div class="deepdive-body">${escapeHtml(latest.deep_dive_content || "")}</div>
+        ` : ""}
+      </div>
+      ${historyHtml ? `<div class="history-list">${historyHtml}</div>` : ""}
+    `;
+  }catch(e){
+    wrap.innerHTML = `<div class="empty">${String(e.message || e)}</div>`;
+  }
+}
+
+loadData();
+loadBriefing();
+</script>
+</body>
+</html>
