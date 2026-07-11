@@ -340,7 +340,6 @@ async function loadData(){
         published_at: a.published_at,
         pv, like, comment, rate, days, perDay, weeklyDelta
       };
-    }).filter(r => r.pv !== null);
 
     document.getElementById("updatedAt").textContent =
       "最終更新: " + new Date().toLocaleString("ja-JP", { year:"numeric", month:"long", day:"numeric", hour:"2-digit", minute:"2-digit" });
