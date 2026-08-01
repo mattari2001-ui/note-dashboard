@@ -219,7 +219,20 @@
     </div>
     <div class="bars" id="topBars"><div class="loading">読み込み中...</div></div>
   </section>
-
+<section>
+    <div class="section-head">
+      <div class="section-title">週間ビュー増分推移</div>
+      <div class="section-note">前週比での新規PV数</div>
+    </div>
+    <div class="bars" id="weeklyDeltaBars"><div class="loading">読み込み中...</div></div>
+  </section>
+  <section>
+    <div class="section-head">
+      <div class="section-title">週間ビュー増分推移</div>
+      <div class="section-note">前週比での新規PV数</div>
+    </div>
+    <div class="bars" id="weeklyDeltaBars"><div class="loading">読み込み中...</div></div>
+  </section>
   <section>
     <div class="section-head">
       <div class="section-title">1日あたりビュー 上位10記事</div>
@@ -395,7 +408,31 @@ function renderWeeklyBars(){
     </div>
   `).join("");
 }
-
+function renderWeeklyDeltaBars(){
+  const weekly = window.__weeklyTotals || [];
+  const wrap = document.getElementById("weeklyDeltaBars");
+  if(weekly.length < 2){
+    wrap.innerHTML = '<div class="empty">前週との比較データがまだ1週以上必要です</div>';
+    return;
+  }
+  const deltas = [];
+  for(let i=1; i<weekly.length; i++){
+    deltas.push({ date: weekly[i][0], pv: weekly[i][1], delta: weekly[i][1] - weekly[i-1][1] });
+  }
+  const max = Math.max(...deltas.map(d=>d.delta));
+  const min = Math.min(...deltas.map(d=>d.delta));
+  const absMax = Math.max(Math.abs(max), Math.abs(min));
+  wrap.innerHTML = deltas.map(d => {
+    const isGrowth = d.delta > 0;
+    return `
+      <div class="bar-row">
+        <div class="bar-label">${d.date}</div>
+        <div class="bar-track" style="position:relative;"><div class="bar-fill" style="width:${Math.max(4,(Math.abs(d.delta)/absMax)*100)}%;background:${isGrowth?'var(--good)':'var(--warn)'};"></div></div>
+        <div class="bar-num" style="color:${isGrowth?'var(--good)':'var(--warn)'}">${isGrowth?'+':''} ${fmt(d.delta)}</div>
+      </div>
+    `;
+  }).join("");
+}
 function renderBars(){
   const top = [...rows].sort((a,b)=>(b.pv||0)-(a.pv||0)).slice(0,10);
   const max = top.length ? top[0].pv : 1;
@@ -518,7 +555,7 @@ function renderInsightsAndActions(){
     </div>
   `).join("");
 }
-
+renderWeeklyDeltaBars();
 function renderTable(){
   const sorted = [...rows].sort((a,b) => {
     let av = a[sortKey], bv = b[sortKey];
