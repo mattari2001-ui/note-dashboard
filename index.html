@@ -242,7 +242,15 @@
     </div>
     <div id="briefingWrap"><div class="loading">読み込み中...</div></div>
   </section>
-
+  
+<section>
+    <div class="section-head">
+      <div class="section-title">公開日別 週間ビュー推移</div>
+      <div class="section-note">公開日から翌週～翌々週のPV集計</div>
+    </div>
+    <div class="bars" id="publishedWeekBars"><div class="loading">読み込み中...</div></div>
+  </section>
+  
   <section>
     <div class="section-head">
       <div class="section-title">分析</div>
@@ -427,6 +435,32 @@ function renderWeeklyDeltaBars(){
     `;
   }).join("");
 }
+ function renderPublishedWeekBars(){
+  const data = [
+    {week: '2026-05-03', pv: 90},
+    {week: '2026-05-10', pv: 399},
+    {week: '2026-05-17', pv: 248},
+    {week: '2026-05-24', pv: 159},
+    {week: '2026-05-31', pv: 41},
+    {week: '2026-06-07', pv: 49},
+    {week: '2026-06-14', pv: 27},
+    {week: '2026-06-21', pv: 34},
+    {week: '2026-06-28', pv: 31},
+    {week: '2026-07-05', pv: 29},
+    {week: '2026-07-12', pv: 13},
+    {week: '2026-07-19', pv: 37},
+    {week: '2026-07-26', pv: 51}
+  ];
+  const wrap = document.getElementById("publishedWeekBars");
+  const max = Math.max(...data.map(d=>d.pv));
+  wrap.innerHTML = data.map(d => `
+    <div class="bar-row">
+      <div class="bar-label">${d.week}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(d.pv/max)*100}%;"></div></div>
+      <div class="bar-num">${fmt(d.pv)}</div>
+    </div>
+  `).join("");
+} 
 function renderBars(){
   const top = [...rows].sort((a,b)=>(b.pv||0)-(a.pv||0)).slice(0,10);
   const max = top.length ? top[0].pv : 1;
@@ -550,6 +584,7 @@ function renderInsightsAndActions(){
   `).join("");
 }
 setTimeout(() => renderWeeklyDeltaBars(), 100);
+setTimeout(() => renderPublishedWeekBars(), 100);
 function renderTable(){
   const sorted = [...rows].sort((a,b) => {
     let av = a[sortKey], bv = b[sortKey];
