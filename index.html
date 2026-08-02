@@ -555,7 +555,7 @@ function renderInsightsAndActions(){
     </div>
   `).join("");
 }
-renderWeeklyDeltaBars();
+setTimeout(() => renderWeeklyDeltaBars(), 100);();
 function renderTable(){
   const sorted = [...rows].sort((a,b) => {
     let av = a[sortKey], bv = b[sortKey];
